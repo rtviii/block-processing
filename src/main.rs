@@ -13,6 +13,7 @@ pub fn str_is_pda(acc: &&str) -> Result<bool, bs58::decode::Error> {
     Ok(Pubkey::new(&bytes).is_on_curve())
 }
 
+#[derive(Default,Debug)]
 pub struct AccountProfile {
     pub is_program: bool,
 
@@ -56,19 +57,28 @@ pub fn main() -> io::Result<()> {
 
         // println!("{:#?}", block["transactions"].as_array().iter());
         for tx in block["transactions"].as_array().unwrap() {
-            let accounts = tx["transaction"]["message"]["accountKeys"]
-                .as_array()
-                .unwrap();
-            let ixs = tx["transaction"]["message"]["instructions"]
-                .as_array()
-                .unwrap();
 
-            let num_signers = tx["transaction"]["message"]["header"]["numRequiredSignatures"]
-                .as_i64()
-                .map_or(-1, |x| x as i64);
-            let num_signatures = tx["transaction"]["signatures"]
-                .as_array()
-                .map_or(-1, |x| x.len() as i64);
+            match tx_extract_accdata(&tx["transaction"]){
+                Ok(k) =>{},
+                Err(e) =>{
+                    println!("{:?}", e);
+                }
+
+        };
+
+            // let accounts = tx["transaction"]["message"]["accountKeys"]
+            //     .as_array()
+            //     .unwrap();
+            // let ixs = tx["transaction"]["message"]["instructions"]
+            //     .as_array()
+            //     .unwrap();
+
+            // let num_signers = tx["transaction"]["message"]["header"]["numRequiredSignatures"]
+            //     .as_i64()
+            //     .map_or(-1, |x| x as i64);
+            // let num_signatures = tx["transaction"]["signatures"]
+            //     .as_array()
+            //     .map_or(-1, |x| x.len() as i64);
 
             // for ix in ixs {
             //     let programIdIndex = ix["programIdIndex"].as_u64().unwrap();
@@ -85,17 +95,67 @@ pub fn main() -> io::Result<()> {
     Ok(())
 }
 
-#[derive(Default)]
-pub struct DeserializationError<'a>{
-    pub msg: &'a str,
+#[derive(Default, Debug)]
+pub struct DeserializationError{
+    pub msg: String,
     pub tx_sig      : Option<String>,
     pub block_height: Option<String>,
 }
 
+
+pub fn process_instruction(tx_accs:&Vec<&str>, tx_hm: &mut HashMap<&str,AccountProfile > ,ix:&Value)->Result<u8,DeserializationError>{
+
+    let acc_ids  = ix["accounts"].as_array().ok_or(DeserializationError{msg:"couldn't get accoint_ids".to_string(), ..Default::default()})?
+    .iter().map(|id| id.as_u64().unwrap()).collect::<Vec<u64>>();
+
+    let ixdata   = ix["data"].as_str().ok_or(DeserializationError{msg:"couldn't get ix data ".to_string(), ..Default::default()})?;
+    let pidindex = ix["programIdIndex"].as_u64().ok_or(DeserializationError{msg:"couldn't get prog index ".to_string(), ..Default::default()})?;
+
+
+    // println!("Got accountlist : {:?}", tx_accs);
+    // println!("indexed with pid {} : {:?}", pidindex, tx_accs[pidindex as usize-1]);
+    // acc_ids[pidindex as usize].to_string();
+
+    println!("tx accs : {:?} | pidid :{:?}", tx_accs.len(), pidindex);
+    println!("tx accs : {:?} | pidid :{:?}", tx_accs.len(), pidindex);
+    if (tx_accs.len() == pidindex as usize) {
+        panic!("pidindex out of bounds");
+    }
+
+    Ok(0)
+}
+
+
 pub fn tx_extract_accdata (tx:&Value) -> Result<HashMap<String, AccountProfile>, DeserializationError>{
-    let account_list =  tx["transaction"]["message"]["accountKeys"].as_array().ok_or(DeserializationError{msg:"couldn't deserialize transaction", ..Default::default()})?;
-    println!("{:#?}", account_list);
-    return Ok(HashMap::new());
+    // let account_list    = tx["transaction"]["message"]["accountKeys"].as_array().ok_or(DeserializationError{msg:"couldn't get transaction", ..Default::default()})?;
+
+    let mut account_list    = tx["message"]["accountKeys"]
+    .as_array().ok_or(DeserializationError{msg:"couldn't get account_list".to_string(), ..Default::default()})?
+    .iter().map(|x| x.as_str().unwrap()).collect::<Vec<&str>>();
+
+    // println!(" Acc list is {:#?}", account_list);
+
+    let ixs             = tx["message"]["instructions"].as_array().ok_or(DeserializationError{msg:"couldn't get instructions".to_string(), ..Default::default()})?;
+    // let recentBlockhash = tx["message"]["recentBlockhash"].as_array().ok_or(DeserializationError{msg:"couldn't get recent blockhash".to_string(), ..Default::default()})?;
+    // let header          = tx["message"]["header"].as_array().ok_or(DeserializationError{msg:"couldn't get the header".to_string(), ..Default::default()})?;
+
+
+    let mut hm_per_tx  = HashMap::new();
+    // for acc in account_list{
+    //     hm_per_tx.insert(acc.to_string(), AccountProfile::default());
+    // }
+
+
+    for ix in ixs {
+        // println!("Instruction : {}", ix);
+        process_instruction(&account_list, &mut HashMap::new(), &ix)?;
+    }
+
+
+
+
+
+    Ok(hm_per_tx)
 }
 
 
