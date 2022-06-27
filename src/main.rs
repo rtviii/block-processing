@@ -34,7 +34,10 @@ pub struct AccountProfile {
 pub fn main() -> io::Result<()> {
 
     use std::path::{ PathBuf, Path };
-    let datapath = Path::new("").join(std::env::current_exe().unwrap()).join("samples");
+
+    // let datapath = Path::new("").join(std::env::current_exe().unwrap()).join("samples");
+    let datapath = "/home/rxz/dev/block-processing/samples";
+    println!("attemptint to ope m {}", datapath);
 
     let mut rd = read_dir(datapath)?
         .map(|readdir| readdir.map(|p| p.path()))
@@ -82,12 +85,17 @@ pub fn main() -> io::Result<()> {
     Ok(())
 }
 
-pub fn tx_extract_accdata (tx:&Value) -> HashMap<String, AccountProfile>{
+#[derive(Default)]
+pub struct DeserializationError<'a>{
+    pub msg: &'a str,
+    pub tx_sig      : Option<String>,
+    pub block_height: Option<String>,
+}
 
-    let account_list =  tx["transaction"]["message"]["accountKeys"].as_array();
-    
-
-    return HashMap::new();
+pub fn tx_extract_accdata (tx:&Value) -> Result<HashMap<String, AccountProfile>, DeserializationError>{
+    let account_list =  tx["transaction"]["message"]["accountKeys"].as_array().ok_or(DeserializationError{msg:"couldn't deserialize transaction", ..Default::default()})?;
+    println!("{:#?}", account_list);
+    return Ok(HashMap::new());
 }
 
 
