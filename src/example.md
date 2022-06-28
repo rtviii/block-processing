@@ -39,3 +39,5 @@ https://solscan.io/tx/A3Qa57MkJGSVRK31LXLgkuwRCtv4MBJjNWjtLPZo1uDz7kTtKPDvBuYtXn
                 ]
             }
 ```
+
+            // TODO: Whether balances have changed: tally the difference in meta tag
