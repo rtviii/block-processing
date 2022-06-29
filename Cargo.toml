@@ -10,3 +10,17 @@ solana-sdk          = "1.10.25"
 bs58                = "0.4.0"
 serde_json          = "1.0.81"
 serde               = "1.0.104"
+sb-backend-3-actix  = {path = 'sb-backend-3-actix'}
+actix               = '0.13.0'
+actix-rt            = '2.7.0'
+
+
+[workspace]
+members = [
+    "sb-backend-3-actix",
+]
+
+[[bin]]
+name  = "block-processing"
+test  = false
+bench = false
