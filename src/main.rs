@@ -23,6 +23,8 @@ mod account;
 
 
 
+// TODO :  Sqlite
+// TODO: program methods 
 
 #[actix_rt::main]
 pub async fn main() {
