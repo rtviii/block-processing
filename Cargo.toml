@@ -21,7 +21,11 @@ members = [
     "sb-backend-3-actix",
 ]
 
+# [[bin]]
+# name  = "block-processing"
+# test  = false
+# bench = false
+
 [[bin]]
-name  = "block-processing"
-test  = false
-bench = false
+name =  "main-sc"
+path = "src/main_single_consumer.rs"

@@ -1,14 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use solana_sdk::{pubkey::Pubkey, blake3::Hash};
-use std::{
-    collections::HashMap,
-    fs::{read_dir, File},
-    io::{self, BufReader, Read}, vec, fmt::Display,
-};
-use hex::{encode, decode};
-
-use crate::instruction::process_instruction;
+use solana_sdk::pubkey::Pubkey;
+use std::collections::HashMap;
+use crate::instruction_ops::process_instruction;
 
 pub fn str_is_pda(acc: &&str) -> Result<bool, bs58::decode::Error> {
     let bytes = bs58::decode(acc).into_vec()?;
@@ -22,17 +16,14 @@ pub struct SolanaMessageHeader {
     pub numRequiredSignatures: u8,
 }
 
-
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize)]
 pub struct DataFreq {
-   pub total_length  : u64,
-   pub num_occurences: u64
+    pub total_length: u64,
+    pub num_occurences: u64,
 }
 
-
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize)]
 pub struct AccountProfile {
-    
     pub num_entered_as_signed_rw  : u64,
     pub num_entered_as_signed_r   : u64,
     pub num_entered_as_unsigned_rw: u64,
@@ -50,30 +41,28 @@ pub struct AccountProfile {
     pub is_program: bool,
 
     // If it's a program
-    pub data_first_byte  : HashMap<u8, u64>,
-    pub num_call_to      : u64,
-    pub num_input_accs_ix: Vec<u8>,
-    pub arg_data         : DataFreq
+    pub data_first_byte  : HashMap<u8, u64>, // *likely* method number
+    pub num_call_to      : u64,  
+    pub num_input_accs_ix: Vec<u8>,        
+    pub arg_data         : DataFreq,         //
+    pub num_zero_len_data: u64
 }
 #[derive(Default, Debug)]
 pub struct DeserializationError {
-    pub msg         : String,
-    pub tx_sig      : Option<String>,
+    pub msg: String,
+    pub tx_sig: Option<String>,
     pub block_height: Option<String>,
 }
-
-
 
 /// Extracting data from a single transaction
 /// # Arguments
 /// * `tx` - the transaction to extract data from
 /// # Returns
 /// * `Result<HashMap<String, AccountProfile>, DeserializationError>` - the hashmap for this particular tx to be merged with a per-block one
-pub fn tx_extract_accdata<'a>(
-    tx       : &Value,
-    global_hm: &mut HashMap<&'a str, AccountProfile>
+pub fn tx_extract_accdata<'tx>(
+    tx: &'tx Value,
+    global_hm: &mut HashMap<&'tx str, AccountProfile>,
 ) -> Result<(), DeserializationError> {
-
     let account_list: Vec<&str> = tx["message"]["accountKeys"]
         .as_array()
         .ok_or(DeserializationError {
@@ -83,9 +72,6 @@ pub fn tx_extract_accdata<'a>(
         .iter()
         .map(|x| x.as_str().unwrap())
         .collect::<Vec<&str>>();
-
-    let mut hm_per_tx = HashMap::new();
-
 
 
     let header = tx["message"]["header"]
@@ -137,17 +123,14 @@ pub fn tx_extract_accdata<'a>(
             acc_profile.is_pda = true;
         };
 
-        hm_per_tx.insert(account_list[*i], acc_profile);
+        global_hm.insert(account_list[*i], acc_profile);
     }
 
+    // let first_sig = tx["signatures"][0].as_str().ok_or(DeserializationError {
+    //     msg: "couldn't get signatures".to_string(),
+    //     ..Default::default()
+    // })?;
 
-    let first_sig = tx["signatures"][0].as_str()
-        .ok_or(DeserializationError {
-            msg: "couldn't get signatures".to_string(),
-            ..Default::default()
-        })?;
-
-    println!("\t\t\tTx first sig :{}", first_sig);
 
     let ixs = tx["message"]["instructions"]
         .as_array()
@@ -157,10 +140,8 @@ pub fn tx_extract_accdata<'a>(
         })?;
 
     for ix in ixs {
-        process_instruction(account_list.as_slice(), &mut hm_per_tx, &ix)?;
+        process_instruction(account_list.as_slice(), global_hm, &ix)?;
     }
 
-
-    // let recentBlockhash = tx["message"]["recentBlockhash"].as_array().ok_or(DeserializationError{msg:"couldn't get recent blockhash".to_string(), ..Default::default()})?;
     Ok(())
 }
