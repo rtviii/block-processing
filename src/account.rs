@@ -12,8 +12,6 @@ fn main() -> io::Result<()> {
 
     let mut hmglobal: HashMap<&str, AccountProfile> = HashMap::new();
 
-
-
     // -------------------
     for blockpath in rd.iter() {
 
